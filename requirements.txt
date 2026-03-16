@@ -1,0 +1,11 @@
+# Reddit API wrapper
+praw==7.7.1
+
+# Data processing and export
+pandas==2.1.4
+
+# Configuration management
+python-dotenv==1.0.0
+
+# Progress bars
+tqdm==4.66.1

@@ -1,0 +1,52 @@
+# Personal Use Configuration Template
+# Balanced settings for individual learning and exploration
+
+research_context: personal
+
+# Reddit API Configuration
+reddit:
+  client_id: YOUR_CLIENT_ID
+  client_secret: YOUR_CLIENT_SECRET
+  user_agent: Personal Data Collection Tool v1.0
+
+# Target Subreddit
+subreddit:
+  name: PLACEHOLDER
+  display_name: r/PLACEHOLDER
+  research_focus: Personal interest and learning
+
+# File Paths
+paths:
+  database: personal_data/PLACEHOLDER.db
+  checkpoint: PLACEHOLDER_checkpoint.pkl
+  log: PLACEHOLDER.log
+  output_dir: output/PLACEHOLDER
+
+# Rate Limiting - Moderate settings
+rate_limits:
+  user_discovery: 1.0
+  content_extraction: 1.5
+  comment_expansion: 2.0
+  batch_processing: 2.0
+  rate_limit_backoff: 60.0
+
+# Scraping Configuration - Medium scale
+scraping:
+  batch_size: 8
+  max_users: 1000
+  max_posts_per_discovery: 800
+  time_filter: week
+  resume_on_interrupt: true
+  save_checkpoint_interval: 10
+
+# Analysis Configuration - All analyses enabled
+analysis:
+  temporal_analysis: true
+  text_analysis: true
+  network_analysis: true
+  min_text_length: 10
+  max_word_length: 20
+  topic_modeling_topics: 8
+  network_types:
+    - interaction
+    - coparticipation

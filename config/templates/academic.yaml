@@ -1,0 +1,52 @@
+# Academic Research Configuration Template
+# Optimized for dissertation research, academic papers, and scholarly analysis
+
+research_context: academic
+
+# Reddit API Configuration
+reddit:
+  client_id: YOUR_CLIENT_ID
+  client_secret: YOUR_CLIENT_SECRET
+  user_agent: Academic Research Bot v1.0 by /u/YourUsername
+
+# Target Subreddit
+subreddit:
+  name: PLACEHOLDER
+  display_name: r/PLACEHOLDER
+  research_focus: Academic research on online communities
+
+# File Paths
+paths:
+  database: databases/PLACEHOLDER_data.db
+  checkpoint: checkpoints/PLACEHOLDER_checkpoint.pkl
+  log: logs/PLACEHOLDER_scraper.log
+  output_dir: output/PLACEHOLDER
+
+# Rate Limiting - Conservative for academic use
+rate_limits:
+  user_discovery: 1.5
+  content_extraction: 2.0
+  comment_expansion: 2.5
+  batch_processing: 3.0
+  rate_limit_backoff: 60.0
+
+# Scraping Configuration - Small batches, thorough collection
+scraping:
+  batch_size: 5
+  max_users: null
+  max_posts_per_discovery: 1000
+  time_filter: all
+  resume_on_interrupt: true
+  save_checkpoint_interval: 5
+
+# Analysis Configuration - Comprehensive analysis
+analysis:
+  temporal_analysis: true
+  text_analysis: true
+  network_analysis: true
+  min_text_length: 10
+  max_word_length: 20
+  topic_modeling_topics: 15
+  network_types:
+    - interaction
+    - coparticipation

@@ -1,0 +1,25 @@
+#!/bin/bash
+# Reddit Scraper Toolkit - Main Shell Script Interface
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOOLKIT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Add toolkit to Python path
+export PYTHONPATH="$TOOLKIT_DIR:$PYTHONPATH"
+
+# Check if Python is available
+if ! command -v python3 &> /dev/null; then
+    echo "Error: python3 is required but not installed."
+    exit 1
+fi
+
+# Check if toolkit CLI exists
+CLI_SCRIPT="$TOOLKIT_DIR/tools/cli.py"
+if [ ! -f "$CLI_SCRIPT" ]; then
+    echo "Error: CLI script not found at $CLI_SCRIPT"
+    exit 1
+fi
+
+# Execute the Python CLI with all arguments
+python3 "$CLI_SCRIPT" "$@"

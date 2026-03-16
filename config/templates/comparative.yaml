@@ -1,0 +1,52 @@
+# Comparative Analysis Configuration Template
+# Standardized settings for multi-subreddit comparative studies
+
+research_context: comparative
+
+# Reddit API Configuration
+reddit:
+  client_id: YOUR_CLIENT_ID
+  client_secret: YOUR_CLIENT_SECRET
+  user_agent: Comparative Analysis Tool v1.0
+
+# Target Subreddit
+subreddit:
+  name: PLACEHOLDER
+  display_name: r/PLACEHOLDER
+  research_focus: Comparative analysis across communities
+
+# File Paths
+paths:
+  database: comparative_data/PLACEHOLDER_data.db
+  checkpoint: comparative_data/PLACEHOLDER_checkpoint.pkl
+  log: logs/comparative_PLACEHOLDER.log
+  output_dir: output/comparative/PLACEHOLDER
+
+# Rate Limiting - Balanced for consistency
+rate_limits:
+  user_discovery: 1.8
+  content_extraction: 2.2
+  comment_expansion: 2.5
+  batch_processing: 2.5
+  rate_limit_backoff: 60.0
+
+# Scraping Configuration - Standardized parameters
+scraping:
+  batch_size: 6
+  max_users: null
+  max_posts_per_discovery: 1200
+  time_filter: all
+  resume_on_interrupt: true
+  save_checkpoint_interval: 8
+
+# Analysis Configuration - Full analysis suite
+analysis:
+  temporal_analysis: true
+  text_analysis: true
+  network_analysis: true
+  min_text_length: 10
+  max_word_length: 20
+  topic_modeling_topics: 12
+  network_types:
+    - interaction
+    - coparticipation

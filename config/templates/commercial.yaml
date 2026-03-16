@@ -1,0 +1,51 @@
+# Commercial Research Configuration Template
+# Optimized for market research, consumer insights, and business analysis
+
+research_context: commercial
+
+# Reddit API Configuration
+reddit:
+  client_id: YOUR_CLIENT_ID
+  client_secret: YOUR_CLIENT_SECRET
+  user_agent: Market Research Tool v1.0
+
+# Target Subreddit
+subreddit:
+  name: PLACEHOLDER
+  display_name: r/PLACEHOLDER
+  research_focus: Market research and consumer insights
+
+# File Paths
+paths:
+  database: data/PLACEHOLDER_market_data.db
+  checkpoint: checkpoints/PLACEHOLDER_checkpoint.pkl
+  log: logs/PLACEHOLDER_market_research.log
+  output_dir: output/market_research/PLACEHOLDER
+
+# Rate Limiting - Faster for commercial use
+rate_limits:
+  user_discovery: 0.8
+  content_extraction: 1.2
+  comment_expansion: 1.5
+  batch_processing: 1.5
+  rate_limit_backoff: 45.0
+
+# Scraping Configuration - Larger batches, recent focus
+scraping:
+  batch_size: 15
+  max_users: 5000
+  max_posts_per_discovery: 2000
+  time_filter: month
+  resume_on_interrupt: true
+  save_checkpoint_interval: 10
+
+# Analysis Configuration - Focus on text and temporal
+analysis:
+  temporal_analysis: true
+  text_analysis: true
+  network_analysis: false
+  min_text_length: 15
+  max_word_length: 25
+  topic_modeling_topics: 20
+  network_types:
+    - interaction
