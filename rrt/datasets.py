@@ -162,6 +162,7 @@ class DatasetWriter:
         root: Optional[Path] = None,
         source: str = "reddit-api",
         tool: str = "reddit-research-toolkit",
+        tool_version: str = __version__,
         label: Optional[str] = None,
         notes: str = "",
     ) -> None:
@@ -169,6 +170,7 @@ class DatasetWriter:
         self.query = dict(query or {})
         self.source = source
         self.tool = tool
+        self.tool_version = tool_version
         self.notes = notes
         self.root = Path(root) if root else data_root()
         self.root.mkdir(parents=True, exist_ok=True)
@@ -268,7 +270,7 @@ class DatasetWriter:
             "status": status,
             "created_utc": self.created_utc,
             "finished_utc": None if status == STATUS_IN_PROGRESS else now_utc_iso(),
-            "tool": {"name": self.tool, "version": __version__},
+            "tool": {"name": self.tool, "version": self.tool_version},
             "source": self.source,
             "subreddits": self.subreddits,
             "query": self.query,
@@ -568,11 +570,12 @@ _ALLOWED_IN_ZIP = {MANIFEST_FILE, README_FILE, POSTS_FILE, COMMENTS_FILE, JSON_F
 _MAX_UNZIPPED_BYTES = 2 * 1024 ** 3
 
 
-def import_zip(zip_path: Path, root: Optional[Path] = None) -> Path:
+def import_zip(zip_path: Path, root: Optional[Path] = None, max_bytes: int = _MAX_UNZIPPED_BYTES) -> Path:
     """Unpack a shared dataset zip into the data root. Returns the new folder.
 
     Only the five known file names are extracted, and only by base name, so an
-    archive cannot write outside the dataset folder.
+    archive cannot write outside the dataset folder. max_bytes caps the
+    unpacked size, which stops a small hostile archive from filling the disk.
     """
     zip_path = Path(zip_path).expanduser()
     root = Path(root) if root else data_root()
@@ -598,8 +601,10 @@ def import_zip(zip_path: Path, root: Optional[Path] = None) -> Path:
                 f"{zip_path.name} has no {POSTS_FILE} inside, so it is not a dataset bundle. "
                 "For loose CSV files use: python main.py import <posts.csv> [comments.csv]"
             )
-        if total > _MAX_UNZIPPED_BYTES:
-            raise DatasetError(f"{zip_path.name} unpacks to more than 2 GB, which is larger than this tool accepts.")
+        if total > max_bytes:
+            raise DatasetError(
+                f"{zip_path.name} unpacks to {human_size(total)}, more than the {human_size(max_bytes)} this tool accepts."
+            )
 
         name = slugify(zip_path.stem)
         if MANIFEST_FILE in members:
