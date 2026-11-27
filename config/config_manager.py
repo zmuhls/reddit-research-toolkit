@@ -178,11 +178,13 @@ class ConfigManager:
         config['subreddit']['display_name'] = f"r/{subreddit_name}"
 
         # Update paths
+        # One folder per community, the same layout tools/cli.py uses by default.
         base_name = subreddit_name.lower()
-        config['paths']['database'] = f"databases/{base_name}_data.db"
-        config['paths']['checkpoint'] = f"checkpoints/{base_name}_checkpoint.pkl"
-        config['paths']['log'] = f"logs/{base_name}_scraper.log"
-        config['paths']['output_dir'] = f"output/{base_name}"
+        archive = f"data/{base_name}_archive"
+        config['paths']['database'] = f"{archive}/{base_name}.db"
+        config['paths']['checkpoint'] = f"{archive}/checkpoint.pkl"
+        config['paths']['log'] = f"{archive}/scrape.log"
+        config['paths']['output_dir'] = f"{archive}/exports"
 
         return config
 

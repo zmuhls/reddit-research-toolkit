@@ -1,35 +1,5 @@
-# Reddit Scraper Toolkit Requirements
-
-# Core dependencies
-praw>=7.7.0              # Reddit API wrapper
-pandas>=1.3.0            # Data manipulation and analysis
-# sqlite3 is built into Python — no pip install needed
-python-dotenv>=0.20.0    # Environment variable loading
-PyYAML>=6.0              # YAML configuration support
-
-# Analysis dependencies
-networkx>=2.8.0          # Network analysis
-plotly>=5.0.0           # Interactive visualizations
-scipy>=1.7.0            # Scientific computing
-numpy>=1.21.0           # Numerical computing
-
-# Optional NLP dependencies
-nltk>=3.7                # Natural language toolkit
-textblob>=0.17.1         # Simple text processing
-scikit-learn>=1.0.0      # Machine learning for topic modeling
-
-# Optional visualization dependencies
-seaborn>=0.11.0          # Statistical plotting
-matplotlib>=3.5.0        # Basic plotting
-
-# Development and testing
-pytest>=6.0.0            # Testing framework
-black>=21.0.0            # Code formatting
-flake8>=3.9.0           # Code linting
-
-# Optional community detection
-python-louvain>=0.15     # Louvain community detection algorithm
-
-# Web interface (optional)
-flask>=2.0.0            # Web framework for API
-jinja2>=3.0.0           # Templating engine
+# Moved. The full dependency list now lives at the top of the repository:
+#
+#   python -m pip install -r requirements-analysis.txt
+#
+-r ../requirements-analysis.txt

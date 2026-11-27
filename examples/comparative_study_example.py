@@ -33,9 +33,11 @@ def main():
 
     # Define study parameters
     study_subreddits = ['MachineLearning', 'datascience', 'statistics']
+    # None means no date filter. Use 'YYYY-MM-DD' strings to restrict a real
+    # study to one period.
     study_period = {
-        'start_date': '2023-06-01',
-        'end_date': '2023-12-31'
+        'start_date': None,
+        'end_date': None
     }
 
     config_manager = ConfigManager()
@@ -189,114 +191,28 @@ def main():
     print(f"   Cross-community insights available in: {summary_path}")
 
 def create_comparative_mock_data(db_path, subreddit):
-    """Create mock data tailored to different community characteristics."""
-    import sqlite3
-    from datetime import datetime, timedelta
-    import random
+    """Build a demonstration database for one community from synthetic data.
+
+    Each community gets a different seed and size, so the comparison has
+    something to compare. The rows are invented (see rrt/sample.py).
+    """
+    import tempfile
+    import zlib
+    from rrt import sample
+    from rrt.bridge import build_database
+    from rrt.datasets import STATUS_COMPLETE, DatasetWriter
+
+    seed = zlib.crc32(subreddit.encode('utf-8')) % 10_000
+    posts, comments = sample.generate(n_posts=120 + seed % 180, seed=seed)
 
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
-
-    with sqlite3.connect(db_path) as conn:
-        cursor = conn.cursor()
-
-        # Create tables
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                username TEXT PRIMARY KEY,
-                status TEXT DEFAULT 'completed',
-                post_count INTEGER DEFAULT 0,
-                comment_count INTEGER DEFAULT 0
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS submissions (
-                id TEXT PRIMARY KEY,
-                title TEXT,
-                author TEXT,
-                created_utc INTEGER,
-                score INTEGER,
-                num_comments INTEGER
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS comments (
-                id TEXT PRIMARY KEY,
-                body TEXT,
-                author TEXT,
-                created_utc INTEGER,
-                score INTEGER,
-                submission_id TEXT
-            )
-        ''')
-
-        # Community-specific characteristics
-        community_profiles = {
-            'MachineLearning': {
-                'user_prefix': 'ml_researcher',
-                'topics': ['neural networks', 'deep learning', 'transformers', 'computer vision'],
-                'avg_length': 150,
-                'user_count': 25
-            },
-            'datascience': {
-                'user_prefix': 'data_analyst',
-                'topics': ['pandas', 'visualization', 'statistics', 'Python', 'SQL'],
-                'avg_length': 120,
-                'user_count': 30
-            },
-            'statistics': {
-                'user_prefix': 'statistician',
-                'topics': ['hypothesis testing', 'regression', 'probability', 'R programming'],
-                'avg_length': 100,
-                'user_count': 20
-            }
-        }
-
-        profile = community_profiles.get(subreddit, community_profiles['MachineLearning'])
-
-        # Create users
-        users = [f"{profile['user_prefix']}_{i}" for i in range(profile['user_count'])]
-        for user in users:
-            cursor.execute('INSERT OR IGNORE INTO users (username, status) VALUES (?, ?)',
-                          (user, 'completed'))
-
-        # Create submissions
-        base_time = int((datetime.now() - timedelta(days=180)).timestamp())
-        for i in range(40):
-            cursor.execute('''
-                INSERT OR IGNORE INTO submissions
-                (id, title, author, created_utc, score, num_comments)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                f'sub_{i}',
-                f"Discussion about {random.choice(profile['topics'])} - post {i}",
-                random.choice(users),
-                base_time + random.randint(0, 180*24*3600),
-                random.randint(1, 50),
-                random.randint(0, 15)
-            ))
-
-        # Create comments
-        for i in range(160):
-            comment_length = max(50, int(random.gauss(profile['avg_length'], 30)))
-            comment_body = f"This is a detailed comment about {random.choice(profile['topics'])} " * (comment_length // 50)
-            comment_body = comment_body[:comment_length]
-
-            cursor.execute('''
-                INSERT OR IGNORE INTO comments
-                (id, body, author, created_utc, score, submission_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                f'com_{i}',
-                comment_body,
-                random.choice(users),
-                base_time + random.randint(0, 180*24*3600),
-                random.randint(-2, 20),
-                f't3_sub_{random.randint(0, 39)}'
-            ))
-
-        conn.commit()
+    with tempfile.TemporaryDirectory() as scratch:
+        writer = DatasetWriter([subreddit], {'seed': seed}, root=Path(scratch), source='synthetic')
+        for post in posts:
+            writer.add_post({**post, 'subreddit': subreddit})
+        for comment in comments:
+            writer.add_comment({**comment, 'subreddit': subreddit})
+        build_database(writer.close(STATUS_COMPLETE), Path(db_path))
 
 def generate_comparison_metrics(analysis_results):
     """Generate standardized comparison metrics across communities."""

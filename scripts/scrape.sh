@@ -5,7 +5,7 @@ set -e
 
 # Default values
 SUBREDDIT=""
-MAX_POSTS=10000
+MAX_POSTS=1000
 BATCH_SIZE=10
 TIME_FILTER="all"
 DISCOVER_ONLY=false
@@ -22,7 +22,7 @@ Arguments:
     SUBREDDIT       Subreddit name (without r/)
 
 Options:
-    -p, --max-posts NUM        Maximum posts to scan for discovery [default: 10000]
+    -p, --max-posts NUM        Posts to scan per listing for discovery [default: 1000, the most Reddit serves]
     -b, --batch-size NUM       User processing batch size [default: 10]
     -f, --time-filter FILTER   Time filter (hour, day, week, month, year, all) [default: all]
     -d, --discover-only        Only discover users, don't process them
@@ -31,15 +31,13 @@ Options:
 
 Examples:
     $0 MachineLearning
-    $0 -p 20000 -b 20 MachineLearning
-    $0 --discover-only --max-posts 5000 MachineLearning
+    $0 -p 500 -b 20 MachineLearning
+    $0 --discover-only --max-posts 200 MachineLearning
 
-Environment Variables:
-    REDDIT_CLIENT_ID       Reddit API client ID (required)
-    REDDIT_CLIENT_SECRET   Reddit API client secret (required)
-    REDDIT_USER_AGENT      Reddit API user agent (optional)
+Credentials come from the .env file. Set them up and test them with:
+    python main.py setup
 
-Note: Set credentials in .env file or export as environment variables
+Stop a run with Ctrl+C. Progress is saved; ./scripts/resume.sh SUBREDDIT continues it.
 EOF
 }
 

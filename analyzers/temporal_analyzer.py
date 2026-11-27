@@ -141,7 +141,7 @@ class TemporalAnalyzer:
         )
 
         output_path = self.output_dir / f"{self.subreddit}_monthly_trends.html"
-        fig.write_html(str(output_path))
+        fig.write_html(str(output_path), include_plotlyjs='directory')
 
         return str(output_path)
 
@@ -186,8 +186,7 @@ class TemporalAnalyzer:
             z=heatmap_data,
             x=[f"{h}:00" for h in hours],
             y=days,
-            colorscale='Viridis',
-            hoverangles="closest"
+            colorscale='Viridis'
         ))
 
         fig.update_layout(
@@ -198,7 +197,7 @@ class TemporalAnalyzer:
         )
 
         output_path = self.output_dir / f"{self.subreddit}_daily_patterns.html"
-        fig.write_html(str(output_path))
+        fig.write_html(str(output_path), include_plotlyjs='directory')
 
         return str(output_path)
 
@@ -262,7 +261,7 @@ class TemporalAnalyzer:
         )
 
         output_path = self.output_dir / f"{self.subreddit}_user_cohorts.html"
-        fig.write_html(str(output_path))
+        fig.write_html(str(output_path), include_plotlyjs='directory')
 
         return str(output_path)
 
@@ -336,7 +335,7 @@ class TemporalAnalyzer:
         )
 
         output_path = self.output_dir / f"{self.subreddit}_peak_periods.html"
-        fig.write_html(str(output_path))
+        fig.write_html(str(output_path), include_plotlyjs='directory')
 
         return str(output_path)
 
@@ -380,7 +379,7 @@ class TemporalAnalyzer:
         )
 
         output_path = self.output_dir / f"{self.subreddit}_activity_heatmap.html"
-        fig.write_html(str(output_path))
+        fig.write_html(str(output_path), include_plotlyjs='directory')
 
         return str(output_path)
 
@@ -452,6 +451,11 @@ class TemporalAnalyzer:
 
         return insights
 
+    @staticmethod
+    def _fmt(value: Any, spec: str) -> str:
+        """Format a number, or return N/A when a date range matched no posts."""
+        return format(value, spec) if isinstance(value, (int, float)) else 'N/A'
+
     def _create_html_report(self, results: Dict[str, Any]) -> str:
         """Create comprehensive HTML report."""
         html_content = f"""
@@ -483,9 +487,9 @@ class TemporalAnalyzer:
             <div class="insight">
                 <h3>Overall Activity</h3>
                 <ul>
-                    <li>Total Posts: {summary.get('total_posts', 'N/A'):,}</li>
-                    <li>Unique Authors: {summary.get('unique_authors', 'N/A'):,}</li>
-                    <li>Average Score: {summary.get('avg_score', 'N/A'):.2f}</li>
+                    <li>Total Posts: {self._fmt(summary.get('total_posts'), ',')}</li>
+                    <li>Unique Authors: {self._fmt(summary.get('unique_authors'), ',')}</li>
+                    <li>Average Score: {self._fmt(summary.get('avg_score'), '.2f')}</li>
                     <li>Time Span: {summary.get('earliest_post', 'N/A')} to {summary.get('latest_post', 'N/A')}</li>
                 </ul>
             </div>

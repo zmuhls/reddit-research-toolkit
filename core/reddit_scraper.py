@@ -52,6 +52,7 @@ class UniversalRedditScraper:
         self.db_path = config['paths']['database']
         self.checkpoint_file = config['paths']['checkpoint']
         self.log_file = config['paths'].get('log', 'scraper.log')
+        self.output_dir = config['paths'].get('output_dir') or '.'
 
         # Scraping parameters
         self.rate_limits = config.get('rate_limits', {
@@ -86,17 +87,29 @@ class UniversalRedditScraper:
         logger.info(f"Initialized scraper for r/{self.subreddit_name} in {self.research_context} context")
 
     def _setup_logging(self):
-        """Setup logging configuration"""
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler(self.log_file),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
+        """Log to the archive's log file, and to the console if nothing else does."""
         global logger
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger("rrt.core")
+        logger.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+        log_dir = os.path.dirname(self.log_file)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+        log_path = os.path.abspath(self.log_file)
+        if not any(getattr(handler, 'baseFilename', None) == log_path for handler in logger.handlers):
+            file_handler = logging.FileHandler(self.log_file, encoding='utf-8')
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+
+        # The CLI sets up console logging on the root logger. When this class is
+        # used on its own (a notebook, a script), add a console handler here.
+        if not logging.getLogger().handlers and not any(
+                isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler)
+                for handler in logger.handlers):
+            console_handler = logging.StreamHandler(sys.stdout)
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
 
     def _validate_subreddit_name(self, name: str) -> str:
         """Validate and clean subreddit name."""
@@ -111,13 +124,14 @@ class UniversalRedditScraper:
 
     def _signal_handler(self, signum, frame):
         """Handle shutdown signal gracefully."""
-        logger.info("Shutdown requested. Saving checkpoint...")
+        logger.info("Stop requested. Finishing the current user, then saving progress. "
+                    "Run the same command again to resume.")
         self.shutdown_requested = True
         self._save_checkpoint()
 
     def _setup_database(self):
         """Initialize SQLite database with standard schema."""
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
+        os.makedirs(os.path.dirname(self.db_path) or '.', exist_ok=True)
 
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
@@ -297,7 +311,16 @@ class UniversalRedditScraper:
                     break
 
         except Exception as e:
-            logger.error(f"Error during user discovery: {e}")
+            # Bad credentials, a missing or private community, or a failure
+            # before anything was found: stop here so the caller can explain it.
+            # A hiccup part-way through keeps the users found so far.
+            from rrt.errors import explain
+            problem = explain(e, self.subreddit_name)
+            fatal = problem.code in ('bad-credentials', 'forbidden', 'no-such-subreddit', 'not-found', 'legal-block')
+            if fatal or len(self.discovered_users) == initial_count:
+                self._save_checkpoint()
+                raise
+            logger.error(f"User discovery stopped early ({problem.title}). Continuing with the users found so far.")
 
         new_users = len(self.discovered_users) - initial_count
         logger.info(f"Discovered {new_users} new users (total: {len(self.discovered_users)})")
@@ -562,7 +585,8 @@ class UniversalRedditScraper:
         """
         if not output_path:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = f"{self.subreddit_name}_export_{timestamp}.{format}"
+            os.makedirs(self.output_dir, exist_ok=True)
+            output_path = os.path.join(self.output_dir, f"{self.subreddit_name}_export_{timestamp}.{format}")
 
         if format == 'json':
             self._export_json(output_path)
@@ -597,7 +621,7 @@ class UniversalRedditScraper:
         """Export data as CSV files."""
         import pandas as pd
 
-        base_path = Path(output_path).stem
+        base_path = str(Path(output_path).with_suffix(''))
 
         with sqlite3.connect(self.db_path) as conn:
             # Export submissions
