@@ -1,126 +1,51 @@
 #!/usr/bin/env python3
 """
 Quick Start Example
-Simple demonstration of basic toolkit functionality.
+
+Runs the toolkit's first steps from Python, with no Reddit credentials:
+create the synthetic practice dataset, load it with pandas, and print a few
+facts. Every row in the practice dataset is invented.
+
+    python examples/quick_start.py
 """
 
 import sys
 from pathlib import Path
 
-# Add toolkit to path
-sys.path.append(str(Path(__file__).parent.parent))
+# Make the toolkit importable when this file is run directly.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from rrt import datasets, sample
+
 
 def main():
-    """
-    Quick start demonstration showing the most basic usage patterns.
-    """
-    print("🚀 Reddit Scraper Toolkit - Quick Start")
-    print("=" * 45)
-    print()
+    # 1. Reuse the practice dataset if it exists, otherwise create it.
+    existing = [path for path, manifest in datasets.list_datasets() if manifest.get("source") == "synthetic"]
+    folder = existing[0] if existing else sample.write_sample()
+    print(f"Practice dataset: {folder}")
 
-    # Show basic CLI usage examples
-    print("1. Basic CLI Commands")
-    print("-" * 22)
-    print("   # Scrape a subreddit:")
-    print("   ./scripts/scrape.sh MachineLearning")
-    print()
-    print("   # Analyze data:")
-    print("   ./scripts/analyze.sh --all databases/machinelearning_data.db")
-    print()
-    print("   # Check status:")
-    print("   ./scripts/reddit-toolkit status --database data.db")
-    print()
+    # 2. Load it. Timestamps come back as UTC date-times.
+    posts, comments, manifest = datasets.read_dataset(folder)
+    print(f"{len(posts):,} posts and {len(comments):,} comments from r/{manifest['subreddits'][0]}")
 
-    # Show configuration creation
-    print("2. Configuration Setup")
-    print("-" * 23)
-    print("   # Create configuration from template:")
-    print("   ./scripts/reddit-toolkit config --template academic --subreddit MachineLearning")
-    print()
-    print("   # Set environment variables:")
-    print("   export REDDIT_CLIENT_ID='your_client_id'")
-    print("   export REDDIT_CLIENT_SECRET='your_client_secret'")
-    print()
+    # 3. Ask a few questions of the data.
+    local = posts["created_utc"].dt.tz_convert("America/New_York")
+    print("\nPosts by flair")
+    print(posts["flair"].value_counts().to_string())
+    print("\nBusiest hours (US Eastern)")
+    print(local.dt.hour.value_counts().head(5).sort_index().to_string())
+    print("\nMost discussed posts")
+    print(posts.nlargest(5, "num_comments")[["title", "num_comments", "score"]].to_string(index=False))
 
-    # Show programmatic usage
-    print("3. Programmatic Usage")
-    print("-" * 22)
-    print("   ```python")
-    print("   from config.config_manager import ConfigManager")
-    print("   from core.reddit_scraper import UniversalRedditScraper")
-    print()
-    print("   # Load configuration")
-    print("   config_manager = ConfigManager()")
-    print("   config = config_manager.load_config('my_config.yaml')")
-    print()
-    print("   # Initialize scraper")
-    print("   scraper = UniversalRedditScraper(config)")
-    print()
-    print("   # Collect data")
-    print("   scraper.discover_users_from_subreddit(limit=1000)")
-    print("   scraper.process_users(batch_size=10)")
-    print("   ```")
-    print()
+    # 4. Thread structure: how deep do conversations go?
+    print("\nComments by depth (0 = reply to the post)")
+    print(comments["depth"].value_counts().sort_index().to_string())
 
-    # Show analysis workflow
-    print("4. Analysis Workflow")
-    print("-" * 20)
-    print("   ```python")
-    print("   from analyzers.temporal_analyzer import TemporalAnalyzer")
-    print("   from analyzers.text_analyzer import TextAnalyzer")
-    print()
-    print("   # Run temporal analysis")
-    print("   temporal = TemporalAnalyzer('data.db')")
-    print("   results = temporal.generate_comprehensive_report()")
-    print()
-    print("   # Run text analysis")
-    print("   text = TextAnalyzer('data.db')")
-    print("   results = text.analyze_text_comprehensively()")
-    print("   ```")
-    print()
+    print("\nNext steps")
+    print("  python main.py show              summary in the terminal")
+    print("  python main.py analyze --open    charts and reports in your browser")
+    print("  python main.py scrape <name>     collect a real community (needs credentials)")
 
-    # Show output structure
-    print("5. Output Structure")
-    print("-" * 18)
-    print("   output/")
-    print("   ├── subreddit_name/")
-    print("   │   ├── temporal/")
-    print("   │   │   ├── monthly_trends.html")
-    print("   │   │   ├── daily_patterns.html")
-    print("   │   │   └── temporal_report.html")
-    print("   │   ├── text/")
-    print("   │   │   ├── word_frequency.json")
-    print("   │   │   ├── sentiment_analysis.json")
-    print("   │   │   └── text_analysis_report.html")
-    print("   │   └── network/")
-    print("   │       ├── subreddit_interaction.graphml")
-    print("   │       ├── subreddit_coparticipation.gexf")
-    print("   │       └── network_analysis_report.html")
-    print("   └── analysis_results.json")
-    print()
 
-    # Show next steps
-    print("6. Next Steps")
-    print("-" * 12)
-    print("   📖 Read the full README.md for detailed documentation")
-    print("   🔧 Check examples/ directory for complete use cases")
-    print("   🎯 Run academic_research_example.py for a full demonstration")
-    print("   🔄 Try comparative_study_example.py for multi-community analysis")
-    print("   📞 Visit GitHub repository for support and updates")
-    print()
-
-    # Show helpful tips
-    print("7. Helpful Tips")
-    print("-" * 14)
-    print("   💡 Start with small datasets (max_users=100) for testing")
-    print("   ⚡ Use --discover-only first to estimate data size")
-    print("   📊 Export data to CSV/JSON for external analysis")
-    print("   🔍 Check logs for detailed progress information")
-    print("   🛡️  Always respect Reddit's rate limits and terms of service")
-    print()
-
-    print("✅ Ready to start scraping and analyzing Reddit communities!")
-    print("   Visit the examples/ directory for working code demonstrations.")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

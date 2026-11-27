@@ -8,6 +8,7 @@ import sqlite3
 import pandas as pd
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 from collections import Counter, defaultdict
@@ -74,39 +75,74 @@ class TextAnalyzer:
         self.stop_words = self._get_stop_words()
 
     def _setup_nlp(self):
-        """Setup NLP components and download required data."""
-        if NLTK_AVAILABLE:
-            # Download required NLTK data
-            try:
-                nltk.data.find('tokenizers/punkt')
-            except LookupError:
-                nltk.download('punkt', quiet=True)
+        """Set up NLTK components, downloading their data files when needed.
 
-            try:
-                nltk.data.find('corpora/stopwords')
-            except LookupError:
-                nltk.download('stopwords', quiet=True)
+        Each feature is switched on only if it works on this machine. A
+        computer that cannot download NLTK's data (offline, or behind a
+        firewall) still gets the basic analysis.
+        """
+        self.has_tokenizer = False
+        self.has_stopwords = False
+        self.has_lemmatizer = False
+        self.has_vader = False
+        if not NLTK_AVAILABLE:
+            return
 
+        def works(probe) -> bool:
             try:
-                nltk.data.find('corpora/wordnet')
-            except LookupError:
-                nltk.download('wordnet', quiet=True)
+                probe()
+                return True
+            except Exception:
+                return False
 
-            try:
-                nltk.data.find('vader_lexicon')
-            except LookupError:
-                nltk.download('vader_lexicon', quiet=True)
+        def ensure(probe, *packages) -> bool:
+            if works(probe):
+                return True
+            for package in packages:
+                try:
+                    nltk.download(package, quiet=True)
+                except Exception:
+                    pass
+            return works(probe)
 
-            # Initialize NLTK components
-            self.stemmer = PorterStemmer()
+        self.has_tokenizer = ensure(lambda: word_tokenize("A short test."), 'punkt', 'punkt_tab')
+        self.has_stopwords = ensure(lambda: stopwords.words('english'), 'stopwords')
+        self.has_lemmatizer = ensure(lambda: WordNetLemmatizer().lemmatize('tests'), 'wordnet', 'omw-1.4')
+        self.has_vader = ensure(lambda: SentimentIntensityAnalyzer(), 'vader_lexicon')
+
+        self.stemmer = PorterStemmer()
+        if self.has_lemmatizer:
             self.lemmatizer = WordNetLemmatizer()
+        if self.has_vader:
             self.sentiment_analyzer = SentimentIntensityAnalyzer()
+
+        missing = [name for name, ready in (
+            ('tokenizer', self.has_tokenizer), ('stop words', self.has_stopwords),
+            ('lemmatizer', self.has_lemmatizer), ('sentiment lexicon', self.has_vader)) if not ready]
+        if missing:
+            logging.warning(
+                "NLTK data could not be loaded for: %s. Those features fall back to basic mode. "
+                "To fetch the data, run: python -m nltk.downloader punkt punkt_tab stopwords wordnet vader_lexicon",
+                ', '.join(missing))
 
     def _get_stop_words(self) -> set:
         """Get comprehensive stop words list."""
-        stop_words = set()
+        # A compact English list, so word counts are meaningful even when
+        # NLTK or its data files are absent.
+        stop_words = set("""
+            a about above after again against all am an and any are as at be because been before
+            being below between both but by can did do does doing down during each few for from
+            further had has have having he her here hers herself him himself his how i if in into
+            is it its itself me more most my myself no nor not of off on once only or other our
+            ours ourselves out over own same she so some such than that the their theirs them
+            themselves then there these they this those through to too under until up very was we
+            were what when where which while who whom why will with you your yours yourself
+            yourselves im ive id dont doesnt didnt isnt arent wasnt werent cant wont wouldnt
+            couldnt shouldnt thats theres theyre youre hes shes its lets got one two much many
+            even still well back going been
+        """.split())
 
-        if NLTK_AVAILABLE:
+        if self.has_stopwords:
             stop_words.update(stopwords.words('english'))
 
         # Add common Reddit/internet stop words
@@ -155,7 +191,7 @@ class TextAnalyzer:
         results['files']['word_frequency'] = self._analyze_word_frequency(text_data)
         results['files']['phrase_analysis'] = self._analyze_phrases(text_data)
 
-        if NLTK_AVAILABLE or TEXTBLOB_AVAILABLE:
+        if self.has_vader or TEXTBLOB_AVAILABLE:
             results['files']['sentiment_analysis'] = self._analyze_sentiment(text_data)
 
         if SKLEARN_AVAILABLE:
@@ -234,22 +270,24 @@ class TextAnalyzer:
         text = re.sub(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', '', text)
 
         # Remove Reddit formatting
-        text = re.sub(r'\*\*(.*?)\*\*', r'\\1', text)  # Bold
-        text = re.sub(r'\*(.*?)\*', r'\\1', text)      # Italic
-        text = re.sub(r'~~(.*?)~~', r'\\1', text)      # Strikethrough
-        text = re.sub(r'\^(.*?)\^', r'\\1', text)      # Superscript
-        text = re.sub(r'&gt;.*?\\n', '', text)         # Quotes
+        text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)   # Bold
+        text = re.sub(r'\*(.*?)\*', r'\1', text)       # Italic
+        text = re.sub(r'~~(.*?)~~', r'\1', text)       # Strikethrough
+        text = re.sub(r'\^(.*?)\^', r'\1', text)       # Superscript
+        text = re.sub(r'&gt;.*?(\n|$)', ' ', text)      # Quotes
         text = re.sub(r'/u/[A-Za-z0-9_-]+', '', text) # User mentions
         text = re.sub(r'/r/[A-Za-z0-9_-]+', '', text) # Subreddit mentions
 
         # Remove special characters but keep basic punctuation
-        text = re.sub(r'[^a-zA-Z0-9\\s\\.,!?;:-]', '', text)
+        text = re.sub(r'[^a-zA-Z0-9\s.,!?;:-]', ' ', text)
 
         # Tokenize
-        if NLTK_AVAILABLE:
+        if self.has_tokenizer:
             words = word_tokenize(text)
         else:
-            words = text.split()
+            # Without NLTK's tokenizer, take runs of letters so that trailing
+            # punctuation does not cost a word ("credits," -> "credits").
+            words = re.findall(r"[A-Za-z]+", text)
 
         # Filter words
         filtered_words = []
@@ -260,7 +298,7 @@ class TextAnalyzer:
                 word.isalpha()):
 
                 # Lemmatize if available
-                if NLTK_AVAILABLE:
+                if self.has_lemmatizer:
                     word = self.lemmatizer.lemmatize(word.lower())
 
                 filtered_words.append(word.lower())
@@ -356,7 +394,7 @@ class TextAnalyzer:
             text = item['text']
             sentiment = {'id': item['id'], 'type': item['type']}
 
-            if NLTK_AVAILABLE:
+            if self.has_vader:
                 # VADER sentiment analysis
                 vader_scores = self.sentiment_analyzer.polarity_scores(text)
                 sentiment.update({
@@ -406,7 +444,7 @@ class TextAnalyzer:
         """Calculate aggregate sentiment statistics."""
         stats = {}
 
-        if NLTK_AVAILABLE:
+        if self.has_vader:
             vader_compounds = [s['vader_compound'] for s in sentiment_results if 'vader_compound' in s]
             if vader_compounds:
                 stats['vader'] = {
@@ -471,7 +509,12 @@ class TextAnalyzer:
             max_df=0.8
         )
 
-        tfidf_matrix = vectorizer.fit_transform(documents)
+        try:
+            tfidf_matrix = vectorizer.fit_transform(documents)
+        except ValueError as exc:
+            # Too few documents, or too little shared vocabulary, to model topics.
+            logging.warning(f"Topic modeling skipped: {exc}")
+            return None
         feature_names = vectorizer.get_feature_names_out()
 
         # LDA Topic Modeling
@@ -538,7 +581,11 @@ class TextAnalyzer:
             max_df=0.7
         )
 
-        tfidf_matrix = vectorizer.fit_transform(documents)
+        try:
+            tfidf_matrix = vectorizer.fit_transform(documents)
+        except ValueError as exc:
+            logging.warning(f"Keyword extraction skipped: {exc}")
+            return None
         feature_names = vectorizer.get_feature_names_out()
 
         # Calculate average TF-IDF scores

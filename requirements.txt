@@ -1,11 +1,12 @@
-# Reddit API wrapper
-praw==7.7.1
+# Core packages for the Reddit Research Toolkit.
+#
+#   python -m pip install -r requirements.txt
+#
+# Lower bounds only. pip picks the newest release that has a ready-made build
+# for your Python version, so nothing has to compile on your machine.
 
-# Data processing and export
-pandas==2.1.4
-
-# Configuration management
-python-dotenv==1.0.0
-
-# Progress bars
-tqdm==4.66.1
+praw>=7.7.1            # Reddit API client
+pandas>=2.2            # tables, CSV reading
+rich>=13.7             # readable terminal output and progress bars
+python-dotenv>=1.0     # reads the .env file for the advanced CLI
+PyYAML>=6.0            # config files for the advanced CLI

@@ -26,6 +26,11 @@ def main():
     4. Generate research-ready outputs
     """
 
+    # No date filter: analyze everything in the database. Set these to
+    # 'YYYY-MM-DD' strings to restrict a real study to one period.
+    period_start = None
+    period_end = None
+
     # Configuration for academic research
     config_manager = ConfigManager()
 
@@ -117,8 +122,8 @@ def main():
     print("Running temporal analysis...")
     temporal_analyzer = TemporalAnalyzer(db_path, f"{output_dir}/temporal")
     temporal_results = temporal_analyzer.generate_comprehensive_report(
-        start_date='2023-01-01',  # Academic year focus
-        end_date='2023-12-31'
+        start_date=period_start,  # the past year
+        end_date=period_end
     )
     print(f"✓ Temporal analysis complete: {temporal_results['files']['html_report']}")
 
@@ -127,8 +132,8 @@ def main():
     text_analyzer = TextAnalyzer(db_path, f"{output_dir}/text")
     text_results = text_analyzer.analyze_text_comprehensively(
         content_types=['submissions', 'comments'],
-        start_date='2023-01-01',
-        end_date='2023-12-31'
+        start_date=period_start,
+        end_date=period_end
     )
     print(f"✓ Text analysis complete: {text_results['files']['html_report']}")
 
@@ -138,8 +143,8 @@ def main():
         network_analyzer = NetworkAnalyzer(db_path, f"{output_dir}/network")
         network_results = network_analyzer.generate_comprehensive_analysis(
             network_types=['interaction', 'coparticipation'],
-            start_date='2023-01-01',
-            end_date='2023-12-31'
+            start_date=period_start,
+            end_date=period_end
         )
         print(f"✓ Network analysis complete: {network_results['files']['html_report']}")
     except ImportError:
@@ -157,7 +162,7 @@ def main():
         'study_metadata': {
             'subreddit': target_subreddit,
             'research_focus': config['subreddit']['research_focus'],
-            'analysis_period': '2023-01-01 to 2023-12-31',
+            'analysis_period': f'{period_start} to {period_end}' if period_start else 'all dates',
             'methodology': 'User-centric Reddit scraping with comprehensive analysis'
         },
         'temporal_insights': temporal_results.get('insights', {}),
@@ -177,7 +182,7 @@ def main():
     # Generate academic citation format
     print("\n📚 Academic Citation:")
     print(f"   Data collected from r/{target_subreddit} using user-centric methodology")
-    print(f"   Analysis period: 2023-01-01 to 2023-12-31")
+    print(f"   Analysis period: {period_start} to {period_end}" if period_start else "   Analysis period: all dates")
     print(f"   Processing date: {temporal_results['analysis_timestamp'][:10]}")
 
     print("\n🎯 Key Research Outputs:")
@@ -191,91 +196,21 @@ def main():
     print(f"   Results available in: {output_dir}")
 
 def create_mock_database(db_path):
-    """Create a mock database for demonstration purposes."""
-    import sqlite3
-    from datetime import datetime, timedelta
-    import random
+    """Build a demonstration database from the toolkit's synthetic sample.
+
+    The rows are invented (see rrt/sample.py). They carry the same tables and
+    columns a real scrape produces, so every analyzer runs on them.
+    """
+    import tempfile
+    from rrt import sample
+    from rrt.bridge import build_database
 
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as scratch:
+        dataset = sample.write_sample(Path(scratch))
+        build_database(dataset, Path(db_path))
 
-    with sqlite3.connect(db_path) as conn:
-        cursor = conn.cursor()
-
-        # Create tables
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                username TEXT PRIMARY KEY,
-                status TEXT DEFAULT 'completed',
-                post_count INTEGER DEFAULT 0,
-                comment_count INTEGER DEFAULT 0
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS submissions (
-                id TEXT PRIMARY KEY,
-                title TEXT,
-                author TEXT,
-                created_utc INTEGER,
-                score INTEGER,
-                num_comments INTEGER
-            )
-        ''')
-
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS comments (
-                id TEXT PRIMARY KEY,
-                body TEXT,
-                author TEXT,
-                created_utc INTEGER,
-                score INTEGER,
-                submission_id TEXT
-            )
-        ''')
-
-        # Insert mock data
-        base_time = int((datetime.now() - timedelta(days=365)).timestamp())
-
-        # Mock users
-        users = [f'academic_user_{i}' for i in range(20)]
-        for user in users:
-            cursor.execute('INSERT OR IGNORE INTO users (username, status) VALUES (?, ?)',
-                          (user, 'completed'))
-
-        # Mock submissions
-        topics = ['machine learning', 'research', 'algorithms', 'data science', 'AI ethics']
-        for i in range(50):
-            cursor.execute('''
-                INSERT OR IGNORE INTO submissions
-                (id, title, author, created_utc, score, num_comments)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                f'sub_{i}',
-                f'Academic discussion on {random.choice(topics)} #{i}',
-                random.choice(users),
-                base_time + random.randint(0, 365*24*3600),
-                random.randint(1, 100),
-                random.randint(0, 20)
-            ))
-
-        # Mock comments
-        for i in range(200):
-            cursor.execute('''
-                INSERT OR IGNORE INTO comments
-                (id, body, author, created_utc, score, submission_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (
-                f'com_{i}',
-                f'Academic comment discussing research methodology and findings #{i}',
-                random.choice(users),
-                base_time + random.randint(0, 365*24*3600),
-                random.randint(-5, 50),
-                f't3_sub_{random.randint(0, 49)}'
-            ))
-
-        conn.commit()
-
-    print(f"✓ Mock database created with sample academic data")
+    print("✓ Demonstration database created from synthetic sample data")
 
 if __name__ == '__main__':
     main()

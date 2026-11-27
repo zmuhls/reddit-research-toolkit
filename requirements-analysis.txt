@@ -1,0 +1,14 @@
+# Optional packages for 'python main.py analyze' and the advanced analyzers.
+#
+#   python -m pip install -r requirements-analysis.txt
+#
+-r requirements.txt
+
+plotly>=5.18           # interactive charts (temporal analysis, reports)
+numpy>=1.26
+networkx>=3.2          # interaction networks
+
+# Richer text analysis. The text analyzer runs without these in a basic mode.
+nltk>=3.8              # sentiment (VADER), stop words, tokenizing
+scikit-learn>=1.4      # topic modeling, keyword extraction
+textblob>=0.18         # second sentiment measure

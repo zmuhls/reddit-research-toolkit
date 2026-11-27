@@ -1,22 +1,20 @@
 #!/bin/bash
-# Resume a previously interrupted scrape
-# Usage: ./scripts/resume.sh <subreddit> [--max-posts N] [--batch-size N]
+# Resume an interrupted archive: process the users already discovered.
+#
+# Usage: ./scripts/resume.sh SUBREDDIT [extra options for 'scrape']
+#
+#   ./scripts/resume.sh CUNY
+#   ./scripts/resume.sh CUNY --max-users 500 --batch-size 20
 
-SUBREDDIT=${1:-"python"}
-MAX_POSTS=${2:-1000}
-BATCH_SIZE=${3:-20}
+set -e
 
-echo "=== Resuming Reddit Scraper ==="
-echo "Subreddit:  r/${SUBREDDIT}"
-echo "Max posts:  ${MAX_POSTS}"
-echo "Batch size: ${BATCH_SIZE}"
-echo ""
+if [ -z "$1" ] || [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    sed -n '2,8p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    exit 0
+fi
 
-python3 tools/cli.py scrape \
-    --subreddit "${SUBREDDIT}" \
-    --max-posts "${MAX_POSTS}" \
-    --batch-size "${BATCH_SIZE}" \
-    --time-filter all
+SUBREDDIT="$1"
+shift
 
-echo ""
-echo "Scraping complete!"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/reddit-toolkit" scrape --subreddit "$SUBREDDIT" --process-only "$@"

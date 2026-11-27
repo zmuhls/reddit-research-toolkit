@@ -448,7 +448,7 @@ class NetworkAnalyzer:
         except ImportError:
             # Fallback to greedy modularity communities
             try:
-                communities = nx.greedy_modularity_communities(G.to_undirected())
+                communities = nx.algorithms.community.greedy_modularity_communities(G.to_undirected())
                 community_structure = {
                     'method': 'greedy_modularity',
                     'num_communities': len(communities),
@@ -544,14 +544,18 @@ class NetworkAnalyzer:
 
         files = {}
 
+        # GraphML and GEXF hold only text and numbers, so export a copy with
+        # empty values dropped and lists or dictionaries reduced to a count.
+        export_graph = self._export_safe_copy(G)
+
         # GraphML (preserves all attributes)
         graphml_path = self.output_dir / f"{base_filename}.graphml"
-        nx.write_graphml(G, str(graphml_path))
+        nx.write_graphml(export_graph, str(graphml_path))
         files['graphml'] = str(graphml_path)
 
         # GEXF (for Gephi)
         gexf_path = self.output_dir / f"{base_filename}.gexf"
-        nx.write_gexf(G, str(gexf_path))
+        nx.write_gexf(export_graph, str(gexf_path))
         files['gexf'] = str(gexf_path)
 
         # JSON (for web visualization)
@@ -574,6 +578,44 @@ class NetworkAnalyzer:
 
         return files
 
+    @staticmethod
+    def _export_safe_copy(G: 'Graph') -> 'Graph':
+        """Copy of G whose attributes GraphML and GEXF can store."""
+        def clean(attributes: Dict[str, Any]) -> Dict[str, Any]:
+            cleaned = {}
+            for key, value in attributes.items():
+                if value is None:
+                    continue
+                if isinstance(value, (list, tuple, set, dict)):
+                    cleaned[f"{key}_count"] = len(value)
+                elif isinstance(value, (str, bool, int, float)):
+                    cleaned[key] = value
+                elif hasattr(value, 'item'):  # numpy scalar
+                    cleaned[key] = value.item()
+                else:
+                    cleaned[key] = str(value)
+            return cleaned
+
+        H = G.__class__()
+        for node, attributes in G.nodes(data=True):
+            H.add_node(node, **clean(attributes))
+        for source, target, attributes in G.edges(data=True):
+            H.add_edge(source, target, **clean(attributes))
+        return H
+
+    @staticmethod
+    def _json_safe(value: Any) -> Any:
+        """Make one attribute value JSON-serializable."""
+        if isinstance(value, (set, frozenset)):
+            return list(value)
+        if isinstance(value, (list, tuple, dict, str, bool)) or value is None:
+            return value
+        if hasattr(value, 'item'):  # numpy scalar
+            value = value.item()
+        if isinstance(value, float) and value != value:  # NaN
+            return None
+        return value
+
     def _network_to_json(self, G: 'Graph') -> Dict[str, Any]:
         """Convert network to JSON format for web visualization."""
         # Nodes
@@ -583,10 +625,7 @@ class NetworkAnalyzer:
             node_info.update(data)
             # Convert any non-serializable values
             for key, value in node_info.items():
-                if pd.isna(value):
-                    node_info[key] = None
-                elif isinstance(value, (set, frozenset)):
-                    node_info[key] = list(value)
+                node_info[key] = self._json_safe(value)
             nodes.append(node_info)
 
         # Edges
@@ -596,10 +635,7 @@ class NetworkAnalyzer:
             edge_info.update(data)
             # Convert any non-serializable values
             for key, value in edge_info.items():
-                if pd.isna(value):
-                    edge_info[key] = None
-                elif isinstance(value, (set, frozenset)):
-                    edge_info[key] = list(value)
+                edge_info[key] = self._json_safe(value)
             edges.append(edge_info)
 
         return {

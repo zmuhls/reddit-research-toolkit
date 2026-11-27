@@ -34,11 +34,13 @@ Options:
     -h, --help              Show this help message
 
 Examples:
-    $0 --all data/machinelearning_data.db
-    $0 --temporal --text data/machinelearning_data.db
-    $0 --all --start-date 2020-01-01 --end-date 2020-12-31 data.db
+    $0 --all data/machinelearning_archive/machinelearning.db
+    $0 --temporal --text data/machinelearning_archive/machinelearning.db
+    $0 --all --start-date 2024-01-01 --end-date 2024-12-31 databases/cuny_data.db
 
-Note: Network analysis requires additional dependencies (networkx, plotly).
+Analysis packages install with: python -m pip install -r requirements-analysis.txt
+
+For a dataset folder made with main.py, use: python main.py analyze
 EOF
 }
 
@@ -162,16 +164,24 @@ if [ -n "$START_DATE" ] || [ -n "$END_DATE" ]; then
 fi
 echo ""
 
+# Use the toolkit's virtual environment when it exists
+TOOLKIT_DIR="$(dirname "$SCRIPT_DIR")"
+if [ -x "$TOOLKIT_DIR/.venv/bin/python" ]; then
+    PYTHON="$TOOLKIT_DIR/.venv/bin/python"
+else
+    PYTHON="python3"
+fi
+
 # Check for optional dependencies
 echo "Checking dependencies..."
-python3 -c "import pandas, sqlite3, plotly; print('✓ Core dependencies available')" || {
+"$PYTHON" -c "import pandas, sqlite3, plotly; print('✓ Core dependencies available')" || {
     echo "✗ Missing core dependencies (pandas, plotly)"
-    echo "Install with: pip install -r config/requirements.txt"
+    echo "Install with: python -m pip install -r requirements-analysis.txt"
     exit 1
 }
 
 if [ "$NETWORK" = true ] || [ "$ALL_ANALYSES" = true ]; then
-    python3 -c "import networkx; print('✓ Network analysis dependencies available')" 2>/dev/null || {
+    "$PYTHON" -c "import networkx; print('✓ Network analysis dependencies available')" 2>/dev/null || {
         echo "⚠ Network analysis dependencies missing (networkx)"
         echo "Install with: pip install networkx"
         echo "Network analysis will be skipped..."
@@ -179,7 +189,7 @@ if [ "$NETWORK" = true ] || [ "$ALL_ANALYSES" = true ]; then
 fi
 
 if [ "$TEXT" = true ] || [ "$ALL_ANALYSES" = true ]; then
-    python3 -c "import nltk; print('✓ Text analysis dependencies available')" 2>/dev/null || {
+    "$PYTHON" -c "import nltk; print('✓ Text analysis dependencies available')" 2>/dev/null || {
         echo "⚠ Advanced text analysis dependencies missing (nltk)"
         echo "Install with: pip install nltk"
         echo "Basic text analysis will still work..."
